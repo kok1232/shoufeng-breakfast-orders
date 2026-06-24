@@ -1,0 +1,616 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>壽豐早點團體訂餐</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --ink: #221814;
+      --muted: #665d57;
+      --line: #ded6cc;
+      --paper: #fffaf2;
+      --panel: #fff;
+      --brand: #2f7d63;
+      --brand-dark: #205d49;
+      --warm: #f2b84b;
+      --danger: #b84236;
+      --soft: #f6efe5;
+      --shadow: 0 14px 38px rgba(68, 48, 30, .12);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      font-family: "Microsoft JhengHei", "Noto Sans TC", system-ui, sans-serif;
+      background: linear-gradient(135deg, #fffaf2 0%, #f5eadb 52%, #edf6f0 100%);
+      letter-spacing: 0;
+    }
+    button, input, select, textarea { font: inherit; }
+    button { border: 0; cursor: pointer; }
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: minmax(280px, 420px) minmax(0, 1fr);
+    }
+    aside {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow: auto;
+      padding: 28px;
+      color: #fff;
+      background:
+        linear-gradient(rgba(34,24,20,.62), rgba(34,24,20,.82)),
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='900' height='1200' viewBox='0 0 900 1200'%3E%3Crect width='900' height='1200' fill='%23523a27'/%3E%3Cellipse cx='270' cy='236' rx='170' ry='112' fill='%23e6b65d'/%3E%3Cellipse cx='570' cy='248' rx='142' ry='94' fill='%23f4d58c'/%3E%3Crect x='150' y='390' width='620' height='86' rx='43' fill='%23f7ead5'/%3E%3Cellipse cx='296' cy='610' rx='176' ry='126' fill='%23d98b48'/%3E%3Cellipse cx='582' cy='632' rx='162' ry='112' fill='%23b95d3a'/%3E%3Cellipse cx='455' cy='852' rx='248' ry='132' fill='%23efe2cb'/%3E%3Cpath d='M224 845c96-58 316-72 455 5' fill='none' stroke='%232f7d63' stroke-width='30' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-size: cover;
+      background-position: center;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 28px;
+    }
+    .mark {
+      display: grid;
+      place-items: center;
+      width: 48px;
+      height: 48px;
+      border-radius: 8px;
+      color: #221814;
+      background: var(--warm);
+      font-weight: 900;
+    }
+    h1 {
+      margin: 0;
+      font-size: clamp(30px, 4vw, 46px);
+      line-height: 1.1;
+      letter-spacing: 0;
+    }
+    .tagline {
+      margin: 16px 0 24px;
+      color: rgba(255,255,255,.9);
+      line-height: 1.8;
+    }
+    .rule {
+      margin-top: 10px;
+      padding: 12px;
+      border: 1px solid rgba(255,255,255,.26);
+      border-radius: 8px;
+      background: rgba(255,255,255,.12);
+      line-height: 1.65;
+    }
+    main { padding: 28px; }
+    .top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .status {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 34px;
+      padding: 7px 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--muted);
+      background: rgba(255,255,255,.72);
+      font-size: 14px;
+      white-space: nowrap;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: minmax(280px, 390px) minmax(0, 1fr);
+      gap: 18px;
+      align-items: start;
+    }
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255,255,255,.9);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .head {
+      padding: 16px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255,250,242,.8);
+    }
+    .head h2 {
+      margin: 0;
+      font-size: 18px;
+      letter-spacing: 0;
+    }
+    .head p {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    .body { padding: 16px; }
+    .form { display: grid; gap: 12px; }
+    .two {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    label {
+      display: grid;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 800;
+    }
+    input, select, textarea {
+      width: 100%;
+      min-height: 42px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 9px 10px;
+      color: var(--ink);
+      background: #fff;
+      outline: none;
+    }
+    textarea {
+      min-height: 76px;
+      resize: vertical;
+    }
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--brand);
+      box-shadow: 0 0 0 3px rgba(47,125,99,.14);
+    }
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 14px;
+    }
+    .primary, .secondary, .danger {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 9px 14px;
+      border-radius: 8px;
+      font-weight: 900;
+    }
+    .primary { color: #fff; background: var(--brand); }
+    .secondary { border: 1px solid var(--line); color: var(--ink); background: #fff; }
+    .danger { color: #fff; background: var(--danger); }
+    button:disabled {
+      opacity: .58;
+      cursor: not-allowed;
+    }
+    .notice {
+      margin-top: 12px;
+      padding: 12px;
+      border-radius: 8px;
+      color: #6c4b15;
+      background: #fff5dc;
+      font-size: 13px;
+      line-height: 1.65;
+    }
+    .menu { display: grid; gap: 12px; }
+    .category { display: grid; gap: 8px; }
+    .category h3 {
+      margin: 2px 0;
+      color: var(--brand-dark);
+      font-size: 15px;
+      letter-spacing: 0;
+    }
+    .items {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 8px;
+    }
+    .item {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: center;
+      min-height: 56px;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+    }
+    .item b {
+      display: block;
+      font-size: 14px;
+      line-height: 1.35;
+    }
+    .item span {
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .stepper {
+      display: grid;
+      grid-template-columns: 30px 34px 30px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .stepper button {
+      height: 32px;
+      color: var(--ink);
+      background: var(--soft);
+      font-weight: 900;
+    }
+    .stepper output {
+      display: grid;
+      place-items: center;
+      height: 32px;
+      background: #fff;
+      font-weight: 900;
+    }
+    .person {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      overflow: hidden;
+    }
+    .person + .person { margin-top: 10px; }
+    .person-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      background: #fbf5ea;
+      font-weight: 900;
+    }
+    .person-detail {
+      padding: 10px 12px 12px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.65;
+    }
+    .empty {
+      padding: 22px;
+      border: 1px dashed var(--line);
+      border-radius: 8px;
+      color: var(--muted);
+      text-align: center;
+      line-height: 1.7;
+      background: rgba(255,255,255,.72);
+    }
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 20px;
+      transform: translateX(-50%) translateY(120px);
+      max-width: min(560px, calc(100vw - 32px));
+      padding: 12px 14px;
+      border-radius: 8px;
+      color: #fff;
+      background: rgba(34,24,20,.94);
+      opacity: 0;
+      transition: .22s ease;
+      text-align: center;
+      z-index: 10;
+    }
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+    .hidden { display: none !important; }
+    @media (max-width: 1020px) {
+      .app { grid-template-columns: 1fr; }
+      aside {
+        position: relative;
+        height: auto;
+        min-height: 410px;
+      }
+      .grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 680px) {
+      aside, main { padding: 18px; }
+      .top, .two { display: grid; grid-template-columns: 1fr; }
+      .items { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside>
+      <div class="brand">
+        <div class="mark">壽</div>
+        <div>
+          <strong>壽豐早點</strong><br />
+          <span>團體訂餐</span>
+        </div>
+      </div>
+      <h1>跟著大家一起點</h1>
+      <p class="tagline">主訂餐人已經建立好這張團體訂單，填上你的名字和想吃的餐點，送出後就會集中到同一張單。</p>
+      <div class="rule"><strong>固定備註</strong><br />只能選固定備註，避免現場出餐被太多客製要求打亂。</div>
+      <div class="rule"><strong>截止鎖單</strong><br />主訂餐人鎖單後，就不能再新增餐點了，請盡早送出。</div>
+    </aside>
+
+    <main>
+      <div class="top">
+        <div class="status">
+          <span class="pill" id="codePill">載入中...</span>
+          <span class="pill" id="countPill">0 人點餐</span>
+        </div>
+        <button class="secondary" type="button" id="refreshOrder">重新整理</button>
+      </div>
+
+      <div id="missingCode" class="empty hidden">
+        這個連結缺少訂單代碼，請向主訂餐人確認分享連結是否完整（網址最後要有 ?order=代碼）。
+      </div>
+
+      <div id="orderNotFound" class="empty hidden">
+        找不到這張訂單，可能代碼有誤或訂單已被移除，請向主訂餐人確認連結。
+      </div>
+
+      <div class="grid" id="mainGrid">
+        <section class="panel" id="infoPanel">
+          <div class="head">
+            <h2>訂單資訊</h2>
+            <p id="orderMeta">載入中...</p>
+          </div>
+        </section>
+
+        <section class="panel hidden" id="joinPanel">
+          <div class="head">
+            <h2>加入個人餐點</h2>
+            <p>每個人填自己的名字和餐點，送出後會存進這張團體訂單。</p>
+          </div>
+          <div class="body">
+            <div class="form">
+              <div class="two">
+                <label>點餐人姓名
+                  <input id="personName" placeholder="例如：小林" />
+                </label>
+                <label>固定備註
+                  <select id="presetNote">
+                    <option>無</option>
+                    <option>不要醬</option>
+                    <option>分開裝</option>
+                    <option>飲料少冰</option>
+                    <option>餐點分袋</option>
+                  </select>
+                </label>
+              </div>
+              <div class="menu" id="menu"></div>
+              <div class="actions">
+                <button class="primary" type="button" id="submitPerson">送出餐點</button>
+                <button class="secondary" type="button" id="resetDraft">重選</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel hidden" id="lockedPanel">
+          <div class="body">
+            <div class="notice">這張訂單已經截止鎖單，無法再新增餐點。如有問題請聯絡主訂餐人。</div>
+          </div>
+        </section>
+
+        <section class="panel hidden" id="peoplePanel">
+          <div class="head">
+            <h2>個人明細</h2>
+            <p>已送出的個人餐點。</p>
+          </div>
+          <div class="body" id="people"></div>
+        </section>
+      </div>
+    </main>
+  </div>
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // 這裡的 Project URL 與 anon public key 是設計給前端公開使用的（不是密碼），
+    // 真正的存取限制由 Supabase 的 RLS 規則與資料庫函式（RPC）控制。
+    // 請把下面兩個值換成你自己 Supabase 專案的 Project URL 與 anon public key。
+    const SUPABASE_URL = "https://vywoicgltyshesezepxf.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_FOC9nBa6SZqYEaJ7lrh56w_ifrV3SuT";
+
+    const menus = {
+      weekday: [
+        { category: "蛋餅、煎台與中式點心類", items: [
+          ["原味蛋餅", 30], ["火腿蛋餅", 35], ["玉米蛋餅", 45], ["培根蛋餅", 45],
+          ["起司絲蛋餅", 45], ["培根起司絲蛋餅", 60], ["玉米起司絲蛋餅", 60],
+          ["法式吐司", 35], ["韭菜盒", 37], ["豬肉餡餅", 27], ["紅豆餅", 25],
+          ["蔥花蛋", 20], ["煎包", 18], ["豆皮", 15], ["半熟荷包蛋", 15],
+          ["全熟荷包蛋", 15], ["高麗菜煎餃", 9], ["韭菜煎餃", 9]
+        ]},
+        { category: "特色米食", items: [["阿婆肉粽", 45]] },
+        { category: "飲料類", items: [
+          ["冷咖啡", 30], ["溫咖啡", 30], ["冷豆漿", 25], ["溫豆漿", 25],
+          ["冷奶茶", 25], ["溫奶茶", 25], ["冷紅茶", 20], ["溫紅茶", 20]
+        ]}
+      ],
+      holiday: [
+        { category: "蛋餅、煎台與中式點心類", items: [
+          ["培根起司絲蛋餅", 60], ["玉米起司絲蛋餅", 60], ["韭菜盒", 37],
+          ["法式吐司", 35], ["豬肉餡餅", 27], ["紅豆餅", 25], ["蔥蛋", 20],
+          ["煎包", 18], ["豆皮", 15], ["半熟荷包蛋", 15], ["全熟荷包蛋", 15],
+          ["高麗菜煎餃", 9], ["韭菜煎餃", 9]
+        ]},
+        { category: "特色米食", items: [["阿婆肉粽", 45]] },
+        { category: "飲料類", items: [
+          ["冷咖啡", 30], ["溫咖啡", 30], ["冷豆漿", 25], ["溫豆漿", 25],
+          ["冷奶茶", 25], ["溫奶茶", 25], ["冷紅茶", 20], ["溫紅茶", 20]
+        ]}
+      ]
+    };
+
+    const $ = (id) => document.getElementById(id);
+    const money = (value) => `${Number(value || 0).toLocaleString("zh-TW")} 元`;
+    const state = {
+      client: null,
+      menuType: "weekday",
+      orderCode: new URLSearchParams(location.search).get("order"),
+      order: null,
+      people: [],
+      draft: {}
+    };
+
+    function showToast(message) {
+      $("toast").textContent = message;
+      $("toast").classList.add("show");
+      window.clearTimeout(showToast.timer);
+      showToast.timer = window.setTimeout(() => $("toast").classList.remove("show"), 2400);
+    }
+
+    function setBusy(button, busy) {
+      button.disabled = busy;
+      button.dataset.oldText ||= button.textContent;
+      button.textContent = busy ? "處理中..." : button.dataset.oldText;
+    }
+
+    function renderMenu() {
+      $("menu").innerHTML = menus[state.menuType].map(group => `
+        <div class="category">
+          <h3>${group.category}</h3>
+          <div class="items">
+            ${group.items.map(([name, price]) => `
+              <div class="item">
+                <div><b>${name}</b><span>${money(price)}</span></div>
+                <div class="stepper">
+                  <button type="button" data-action="dec" data-name="${name}">-</button>
+                  <output>${state.draft[name] || 0}</output>
+                  <button type="button" data-action="inc" data-name="${name}">+</button>
+                </div>
+              </div>
+            `).join("")}
+          </div>
+        </div>
+      `).join("");
+    }
+
+    function currentItems() {
+      return menus[state.menuType].flatMap(group => group.items.map(([name, price]) => ({ name, price })));
+    }
+
+    function personTotal(person) {
+      return (person.items || []).reduce((sum, item) => sum + Number(item.unit_price) * Number(item.quantity), 0);
+    }
+
+    function renderOrder() {
+      const hasOrder = Boolean(state.order);
+      $("infoPanel").classList.toggle("hidden", !hasOrder);
+      $("joinPanel").classList.toggle("hidden", !hasOrder || state.order?.locked);
+      $("lockedPanel").classList.toggle("hidden", !hasOrder || !state.order?.locked);
+      $("peoplePanel").classList.toggle("hidden", !hasOrder);
+      $("codePill").textContent = hasOrder ? `訂單 ${state.order.order_code}` : "尚未載入";
+
+      if (!hasOrder) return;
+
+      state.menuType = state.order.menu_type;
+      $("orderMeta").textContent =
+        `菜單：${state.order.menu_type === "weekday" ? "平日" : "假日"}　` +
+        `取餐：${state.order.pickup_date} ${state.order.pickup_time}　` +
+        `方式：${state.order.delivery_type}` +
+        (state.order.locked ? "　（已截止鎖單）" : "");
+      $("countPill").textContent = `${state.people.length} 人點餐`;
+      renderMenu();
+      renderPeople();
+    }
+
+    function renderPeople() {
+      if (!state.people.length) {
+        $("people").innerHTML = `<div class="empty">目前還沒有人送出餐點。</div>`;
+        return;
+      }
+      $("people").innerHTML = state.people.map(person => `
+        <article class="person">
+          <div class="person-head">
+            <span>${person.person_name}</span>
+            <span>${money(personTotal(person))}</span>
+          </div>
+          <div class="person-detail">
+            ${(person.items || []).map(item => `${item.item_name} x ${item.quantity}`).join("、")}
+            ${person.note && person.note !== "無" ? `<br>備註：${person.note}` : ""}
+          </div>
+        </article>
+      `).join("");
+    }
+
+    async function loadOrder() {
+      if (!state.client || !state.orderCode) return;
+      const { data, error } = await state.client.rpc("get_group_order", { p_order_code: state.orderCode });
+      if (error) return showToast(error.message);
+      if (!data || !data.order) {
+        $("orderNotFound").classList.remove("hidden");
+        $("mainGrid").classList.add("hidden");
+        return;
+      }
+      $("orderNotFound").classList.add("hidden");
+      $("mainGrid").classList.remove("hidden");
+      state.order = data.order;
+      state.people = data.people || [];
+      renderOrder();
+    }
+
+    async function submitPerson() {
+      if (!state.client || !state.order) return showToast("尚未載入訂單");
+      if (state.order.locked) return showToast("訂單已截止鎖定");
+      const name = $("personName").value.trim();
+      if (!name) return showToast("請填點餐人姓名");
+      const priceMap = new Map(currentItems().map(item => [item.name, item.price]));
+      const items = Object.entries(state.draft)
+        .filter(([, quantity]) => quantity > 0)
+        .map(([item_name, quantity]) => ({ item_name, unit_price: priceMap.get(item_name), quantity }));
+      if (!items.length) return showToast("請至少選一項餐點");
+      const button = $("submitPerson");
+      setBusy(button, true);
+      const { error } = await state.client.rpc("add_order_person", {
+        p_order_code: state.order.order_code,
+        p_person_name: name,
+        p_note: $("presetNote").value,
+        p_items: items
+      });
+      setBusy(button, false);
+      if (error) return showToast(error.message);
+      state.draft = {};
+      $("personName").value = "";
+      $("presetNote").value = "無";
+      await loadOrder();
+      showToast("餐點已送出");
+    }
+
+    document.addEventListener("click", (event) => {
+      const stepButton = event.target.closest("[data-action]");
+      if (stepButton) {
+        const name = stepButton.dataset.name;
+        const next = (state.draft[name] || 0) + (stepButton.dataset.action === "inc" ? 1 : -1);
+        if (next <= 0) delete state.draft[name];
+        else state.draft[name] = next;
+        renderMenu();
+      }
+    });
+
+    $("refreshOrder").addEventListener("click", loadOrder);
+    $("submitPerson").addEventListener("click", submitPerson);
+    $("resetDraft").addEventListener("click", () => {
+      state.draft = {};
+      $("personName").value = "";
+      $("presetNote").value = "無";
+      renderMenu();
+    });
+
+    // 初始化：檢查網址是否帶 order 代碼，並連線 Supabase
+    if (!state.orderCode) {
+      $("missingCode").classList.remove("hidden");
+      $("mainGrid").classList.add("hidden");
+    } else if (!window.supabase) {
+      showToast("Supabase 程式庫載入失敗，請檢查網路連線");
+    } else {
+      state.client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      loadOrder();
+    }
+  </script>
+</body>
+</html>
