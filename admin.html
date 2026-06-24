@@ -83,6 +83,61 @@
       background: rgba(255,255,255,.12);
       line-height: 1.65;
     }
+    .connection-rule {
+      padding: 0;
+      overflow: hidden;
+    }
+    .connection-toggle {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 12px;
+      color: #fff;
+      background: transparent;
+      font-weight: 800;
+      font-size: 13px;
+      text-align: left;
+    }
+    .connection-toggle .chev {
+      transition: transform .18s ease;
+      opacity: .8;
+    }
+    .connection-toggle.open .chev {
+      transform: rotate(180deg);
+    }
+    #connectionSummary.is-connected {
+      color: #bfe8d4;
+    }
+    #connectionSummary.is-pending {
+      color: #ffd9a0;
+    }
+    .connection-body {
+      padding: 0 12px 14px;
+      display: grid;
+      gap: 10px;
+    }
+    .connection-body label {
+      display: grid;
+      gap: 5px;
+      color: rgba(255,255,255,.82);
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .connection-body input {
+      background: rgba(255,255,255,.92);
+    }
+    .connection-hint {
+      margin: 0;
+      color: rgba(255,255,255,.78);
+      font-size: 12px;
+      line-height: 1.6;
+    }
+    .connection-body .notice {
+      margin-top: 0;
+      font-size: 12px;
+    }
     main { padding: 28px; }
     .top {
       display: flex;
@@ -382,6 +437,27 @@
       <div class="rule"><strong>訂單代碼</strong><br />網址中的 order 代碼就是同一張團體訂單的入口。</div>
       <div class="rule"><strong>限制備註</strong><br />客人只能選固定備註，避免現場出餐被太多客製要求打亂。</div>
       <div class="rule"><strong>截止鎖單</strong><br />用電話鎖單後，其他人不能再新增。</div>
+
+      <div class="rule connection-rule" id="connectionRule">
+        <button type="button" class="connection-toggle" id="connectionToggle">
+          <span id="connectionSummary">⚙ Supabase 連線：尚未連線</span>
+          <span class="chev" id="connectionChevron">▾</span>
+        </button>
+        <div class="connection-body hidden" id="connectionBody">
+          <p class="connection-hint">填入 Project URL 和 anon public key。這兩個可以放前端，service role key 不可以。</p>
+          <label>Supabase Project URL
+            <input id="supabaseUrl" placeholder="https://xxxx.supabase.co" />
+          </label>
+          <label>Supabase anon public key
+            <input id="supabaseAnonKey" placeholder="eyJhbGciOi..." />
+          </label>
+          <div class="actions">
+            <button class="primary" type="button" id="saveConfig">儲存連線</button>
+            <button class="secondary" type="button" id="clearConfig">清除</button>
+          </div>
+          <div class="notice">第一次使用前，請先在 Supabase SQL Editor 執行我附的 `supabase-schema.sql`。</div>
+        </div>
+      </div>
     </aside>
 
     <main>
@@ -396,28 +472,6 @@
       </div>
 
       <div class="grid">
-        <section class="panel">
-          <div class="head">
-            <h2>Supabase 連線</h2>
-            <p>填入 Project URL 和 anon public key。這兩個可以放前端，service role key 不可以。</p>
-          </div>
-          <div class="body">
-            <div class="form">
-              <label>Supabase Project URL
-                <input id="supabaseUrl" placeholder="https://xxxx.supabase.co" />
-              </label>
-              <label>Supabase anon public key
-                <input id="supabaseAnonKey" placeholder="eyJhbGciOi..." />
-              </label>
-              <div class="actions">
-                <button class="primary" type="button" id="saveConfig">儲存連線</button>
-                <button class="secondary" type="button" id="clearConfig">清除</button>
-              </div>
-            </div>
-            <div class="notice">第一次使用前，請先在 Supabase SQL Editor 執行我附的 `supabase-schema.sql`。</div>
-          </div>
-        </section>
-
         <section class="panel" id="createPanel">
           <div class="head">
             <h2>建立團體訂單</h2>
@@ -589,16 +643,32 @@
       connect(false);
     }
 
+    function setConnectionSummary(text, mode) {
+      const el = $("connectionSummary");
+      el.textContent = text;
+      el.classList.toggle("is-connected", mode === "connected");
+      el.classList.toggle("is-pending", mode === "pending");
+    }
+
+    function setConnectionOpen(open) {
+      $("connectionBody").classList.toggle("hidden", !open);
+      $("connectionToggle").classList.toggle("open", open);
+    }
+
     function connect(showMessage = true) {
       const url = $("supabaseUrl").value.trim();
       const key = $("supabaseAnonKey").value.trim();
       if (!url || !key || !window.supabase) {
         $("connectionPill").textContent = "尚未連線";
+        setConnectionSummary("⚙ Supabase 連線：尚未連線", "pending");
+        setConnectionOpen(true);
         state.client = null;
         return;
       }
       state.client = window.supabase.createClient(url, key);
       $("connectionPill").textContent = "已連線 Supabase";
+      setConnectionSummary("✓ Supabase 已連線", "connected");
+      setConnectionOpen(false);
       if (showMessage) showToast("已儲存 Supabase 連線");
       if (state.orderCode) loadOrder();
     }
@@ -778,6 +848,10 @@
       }
     });
 
+    $("connectionToggle").addEventListener("click", () => {
+      const isOpen = !$("connectionBody").classList.contains("hidden");
+      setConnectionOpen(!isOpen);
+    });
     $("saveConfig").addEventListener("click", saveConfig);
     $("clearConfig").addEventListener("click", () => {
       localStorage.removeItem("shoufeng-supabase-config");
