@@ -1,0 +1,909 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>壽豐早點團體訂餐 Supabase 版</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --ink: #221814;
+      --muted: #665d57;
+      --line: #ded6cc;
+      --paper: #fffaf2;
+      --panel: #fff;
+      --brand: #2f7d63;
+      --brand-dark: #205d49;
+      --warm: #f2b84b;
+      --danger: #b84236;
+      --soft: #f6efe5;
+      --shadow: 0 14px 38px rgba(68, 48, 30, .12);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      font-family: "Microsoft JhengHei", "Noto Sans TC", system-ui, sans-serif;
+      background: linear-gradient(135deg, #fffaf2 0%, #f5eadb 52%, #edf6f0 100%);
+      letter-spacing: 0;
+    }
+    button, input, select, textarea { font: inherit; }
+    button { border: 0; cursor: pointer; }
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: minmax(280px, 420px) minmax(0, 1fr);
+    }
+    aside {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow: auto;
+      padding: 28px;
+      color: #fff;
+      background:
+        linear-gradient(rgba(34,24,20,.62), rgba(34,24,20,.82)),
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='900' height='1200' viewBox='0 0 900 1200'%3E%3Crect width='900' height='1200' fill='%23523a27'/%3E%3Cellipse cx='270' cy='236' rx='170' ry='112' fill='%23e6b65d'/%3E%3Cellipse cx='570' cy='248' rx='142' ry='94' fill='%23f4d58c'/%3E%3Crect x='150' y='390' width='620' height='86' rx='43' fill='%23f7ead5'/%3E%3Cellipse cx='296' cy='610' rx='176' ry='126' fill='%23d98b48'/%3E%3Cellipse cx='582' cy='632' rx='162' ry='112' fill='%23b95d3a'/%3E%3Cellipse cx='455' cy='852' rx='248' ry='132' fill='%23efe2cb'/%3E%3Cpath d='M224 845c96-58 316-72 455 5' fill='none' stroke='%232f7d63' stroke-width='30' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-size: cover;
+      background-position: center;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 28px;
+    }
+    .mark {
+      display: grid;
+      place-items: center;
+      width: 48px;
+      height: 48px;
+      border-radius: 8px;
+      color: #221814;
+      background: var(--warm);
+      font-weight: 900;
+    }
+    h1 {
+      margin: 0;
+      font-size: clamp(30px, 4vw, 46px);
+      line-height: 1.1;
+      letter-spacing: 0;
+    }
+    .tagline {
+      margin: 16px 0 24px;
+      color: rgba(255,255,255,.9);
+      line-height: 1.8;
+    }
+    .rule {
+      margin-top: 10px;
+      padding: 12px;
+      border: 1px solid rgba(255,255,255,.26);
+      border-radius: 8px;
+      background: rgba(255,255,255,.12);
+      line-height: 1.65;
+    }
+    main { padding: 28px; }
+    .top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .status {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 34px;
+      padding: 7px 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--muted);
+      background: rgba(255,255,255,.72);
+      font-size: 14px;
+      white-space: nowrap;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: minmax(280px, 390px) minmax(0, 1fr);
+      gap: 18px;
+      align-items: start;
+    }
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255,255,255,.9);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .head {
+      padding: 16px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255,250,242,.8);
+    }
+    .head h2 {
+      margin: 0;
+      font-size: 18px;
+      letter-spacing: 0;
+    }
+    .head p {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    .body { padding: 16px; }
+    .form { display: grid; gap: 12px; }
+    .two {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    label {
+      display: grid;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 800;
+    }
+    input, select, textarea {
+      width: 100%;
+      min-height: 42px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 9px 10px;
+      color: var(--ink);
+      background: #fff;
+      outline: none;
+    }
+    textarea {
+      min-height: 76px;
+      resize: vertical;
+    }
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--brand);
+      box-shadow: 0 0 0 3px rgba(47,125,99,.14);
+    }
+    .segmented {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      padding: 4px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--soft);
+    }
+    .segmented button {
+      min-height: 38px;
+      border-radius: 6px;
+      color: var(--muted);
+      background: transparent;
+      font-weight: 900;
+    }
+    .segmented button.active {
+      color: #fff;
+      background: var(--brand);
+    }
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 14px;
+    }
+    .primary, .secondary, .danger {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 9px 14px;
+      border-radius: 8px;
+      font-weight: 900;
+    }
+    .primary { color: #fff; background: var(--brand); }
+    .secondary { border: 1px solid var(--line); color: var(--ink); background: #fff; }
+    .danger { color: #fff; background: var(--danger); }
+    button:disabled {
+      opacity: .58;
+      cursor: not-allowed;
+    }
+    .notice {
+      margin-top: 12px;
+      padding: 12px;
+      border-radius: 8px;
+      color: #6c4b15;
+      background: #fff5dc;
+      font-size: 13px;
+      line-height: 1.65;
+    }
+    .menu { display: grid; gap: 12px; }
+    .category { display: grid; gap: 8px; }
+    .category h3 {
+      margin: 2px 0;
+      color: var(--brand-dark);
+      font-size: 15px;
+      letter-spacing: 0;
+    }
+    .items {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 8px;
+    }
+    .item {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: center;
+      min-height: 56px;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+    }
+    .item b {
+      display: block;
+      font-size: 14px;
+      line-height: 1.35;
+    }
+    .item span {
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .stepper {
+      display: grid;
+      grid-template-columns: 30px 34px 30px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .stepper button {
+      height: 32px;
+      color: var(--ink);
+      background: var(--soft);
+      font-weight: 900;
+    }
+    .stepper output {
+      display: grid;
+      place-items: center;
+      height: 32px;
+      background: #fff;
+      font-weight: 900;
+    }
+    .person {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      overflow: hidden;
+    }
+    .person + .person { margin-top: 10px; }
+    .person-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      background: #fbf5ea;
+      font-weight: 900;
+    }
+    .person-detail {
+      padding: 10px 12px 12px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.65;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    th, td {
+      padding: 9px 8px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+    th { color: var(--muted); font-size: 12px; }
+    th:last-child, td:last-child {
+      text-align: right;
+      white-space: nowrap;
+    }
+    .total {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 12px;
+      padding: 14px;
+      border-radius: 8px;
+      color: var(--brand-dark);
+      background: #eaf5ef;
+      font-weight: 900;
+    }
+    .empty {
+      padding: 22px;
+      border: 1px dashed var(--line);
+      border-radius: 8px;
+      color: var(--muted);
+      text-align: center;
+      line-height: 1.7;
+      background: rgba(255,255,255,.72);
+    }
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 20px;
+      transform: translateX(-50%) translateY(120px);
+      max-width: min(560px, calc(100vw - 32px));
+      padding: 12px 14px;
+      border-radius: 8px;
+      color: #fff;
+      background: rgba(34,24,20,.94);
+      opacity: 0;
+      transition: .22s ease;
+      text-align: center;
+      z-index: 10;
+    }
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+    .hidden { display: none !important; }
+    @media (max-width: 1020px) {
+      .app { grid-template-columns: 1fr; }
+      aside {
+        position: relative;
+        height: auto;
+        min-height: 410px;
+      }
+      .grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 680px) {
+      aside, main { padding: 18px; }
+      .top, .two { display: grid; grid-template-columns: 1fr; }
+      .items { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside>
+      <div class="brand">
+        <div class="mark">壽</div>
+        <div>
+          <strong>壽豐早點</strong><br />
+          <span>Supabase 團體訂餐</span>
+        </div>
+      </div>
+      <h1>一個連結，大家自己點</h1>
+      <p class="tagline">主訂餐人建立訂單後，把連結傳給大家。每個人送出的餐點會集中到同一張 Supabase 訂單。</p>
+      <div class="rule"><strong>訂單代碼</strong><br />網址中的 order 代碼就是同一張團體訂單的入口。</div>
+      <div class="rule"><strong>限制備註</strong><br />客人只能選固定備註，避免現場出餐被太多客製要求打亂。</div>
+      <div class="rule"><strong>截止鎖單</strong><br />主訂餐人用電話鎖單後，其他人不能再新增。</div>
+    </aside>
+
+    <main>
+      <div class="top">
+        <div class="status">
+          <span class="pill" id="connectionPill">尚未連線</span>
+          <span class="pill" id="codePill">尚未建立訂單</span>
+          <span class="pill" id="countPill">0 人點餐</span>
+          <span class="pill" id="thresholdPill">尚未達門檻</span>
+        </div>
+        <button class="secondary" type="button" id="refreshOrder">重新整理</button>
+      </div>
+
+      <div class="grid">
+        <section class="panel">
+          <div class="head">
+            <h2>Supabase 連線</h2>
+            <p>填入 Project URL 和 anon public key。這兩個可以放前端，service role key 不可以。</p>
+          </div>
+          <div class="body">
+            <div class="form">
+              <label>Supabase Project URL
+                <input id="supabaseUrl" placeholder="https://xxxx.supabase.co" />
+              </label>
+              <label>Supabase anon public key
+                <input id="supabaseAnonKey" placeholder="eyJhbGciOi..." />
+              </label>
+              <div class="actions">
+                <button class="primary" type="button" id="saveConfig">儲存連線</button>
+                <button class="secondary" type="button" id="clearConfig">清除</button>
+              </div>
+            </div>
+            <div class="notice">第一次使用前，請先在 Supabase SQL Editor 執行我附的 `supabase-schema.sql`。</div>
+          </div>
+        </section>
+
+        <section class="panel" id="createPanel">
+          <div class="head">
+            <h2>建立團體訂單</h2>
+            <p>主訂餐人建立後，就能複製連結給其他人。</p>
+          </div>
+          <div class="body">
+            <div class="form">
+              <label>菜單類型
+                <div class="segmented">
+                  <button class="active" type="button" data-menu="weekday">平日</button>
+                  <button type="button" data-menu="holiday">假日</button>
+                </div>
+              </label>
+              <div class="two">
+                <label>取餐日期
+                  <input id="pickupDate" type="date" />
+                </label>
+                <label>取餐時間
+                  <input id="pickupTime" type="time" value="07:30" />
+                </label>
+              </div>
+              <div class="two">
+                <label>主訂餐人
+                  <input id="ownerName" placeholder="例如：王小姐" />
+                </label>
+                <label>聯絡電話
+                  <input id="ownerPhone" inputmode="tel" placeholder="鎖單時會用到" />
+                </label>
+              </div>
+              <div class="two">
+                <label>最低份數
+                  <input id="minQty" type="number" min="1" value="10" />
+                </label>
+                <label>最低金額
+                  <input id="minAmount" type="number" min="0" value="500" />
+                </label>
+              </div>
+              <label>取餐方式
+                <select id="deliveryType">
+                  <option>到店自取</option>
+                  <option>外送，需店家確認</option>
+                </select>
+              </label>
+              <label>地址或主訂單備註
+                <textarea id="orderNote" maxlength="80" placeholder="最多 80 字"></textarea>
+              </label>
+              <button class="primary" type="button" id="createOrder">建立訂餐連結</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel hidden" id="sharePanel">
+          <div class="head">
+            <h2>訂餐連結</h2>
+            <p>把這個連結傳給大家，同一張訂單會集中統計。</p>
+          </div>
+          <div class="body">
+            <div class="form">
+              <label>分享連結
+                <input id="shareLink" readonly />
+              </label>
+              <div class="actions">
+                <button class="primary" type="button" id="copyLink">複製連結</button>
+                <button class="danger" type="button" id="lockOrder">截止鎖單</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel hidden" id="joinPanel">
+          <div class="head">
+            <h2>加入個人餐點</h2>
+            <p>每個人填自己的名字和餐點，送出後會存進 Supabase。</p>
+          </div>
+          <div class="body">
+            <div class="form">
+              <div class="two">
+                <label>點餐人姓名
+                  <input id="personName" placeholder="例如：小林" />
+                </label>
+                <label>固定備註
+                  <select id="presetNote">
+                    <option>無</option>
+                    <option>不要醬</option>
+                    <option>分開裝</option>
+                    <option>飲料少冰</option>
+                    <option>餐點分袋</option>
+                  </select>
+                </label>
+              </div>
+              <div class="menu" id="menu"></div>
+              <div class="actions">
+                <button class="primary" type="button" id="submitPerson">送出餐點</button>
+                <button class="secondary" type="button" id="resetDraft">重選</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel hidden" id="peoplePanel">
+          <div class="head">
+            <h2>個人明細</h2>
+            <p>已送出的個人餐點。</p>
+          </div>
+          <div class="body" id="people"></div>
+        </section>
+
+        <section class="panel hidden" id="summaryPanel">
+          <div class="head">
+            <h2>店家備餐總表</h2>
+            <p>依品項彙總，方便直接備餐。</p>
+          </div>
+          <div class="body">
+            <div id="summary"></div>
+            <div class="actions">
+              <button class="secondary" type="button" id="copySummary">複製總表</button>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const menus = {
+      weekday: [
+        { category: "蛋餅、煎台與中式點心類", items: [
+          ["原味蛋餅", 30], ["火腿蛋餅", 35], ["玉米蛋餅", 45], ["培根蛋餅", 45],
+          ["起司絲蛋餅", 45], ["培根起司絲蛋餅", 60], ["玉米起司絲蛋餅", 60],
+          ["法式吐司", 35], ["韭菜盒", 37], ["豬肉餡餅", 27], ["紅豆餅", 25],
+          ["蔥花蛋", 20], ["煎包", 18], ["豆皮", 15], ["半熟荷包蛋", 15],
+          ["全熟荷包蛋", 15], ["高麗菜煎餃", 9], ["韭菜煎餃", 9]
+        ]},
+        { category: "特色米食", items: [["阿婆肉粽", 45]] },
+        { category: "飲料類", items: [
+          ["冷咖啡", 30], ["溫咖啡", 30], ["冷豆漿", 25], ["溫豆漿", 25],
+          ["冷奶茶", 25], ["溫奶茶", 25], ["冷紅茶", 20], ["溫紅茶", 20]
+        ]}
+      ],
+      holiday: [
+        { category: "蛋餅、煎台與中式點心類", items: [
+          ["培根起司絲蛋餅", 60], ["玉米起司絲蛋餅", 60], ["韭菜盒", 37],
+          ["法式吐司", 35], ["豬肉餡餅", 27], ["紅豆餅", 25], ["蔥蛋", 20],
+          ["煎包", 18], ["豆皮", 15], ["半熟荷包蛋", 15], ["全熟荷包蛋", 15],
+          ["高麗菜煎餃", 9], ["韭菜煎餃", 9]
+        ]},
+        { category: "特色米食", items: [["阿婆肉粽", 45]] },
+        { category: "飲料類", items: [
+          ["冷咖啡", 30], ["溫咖啡", 30], ["冷豆漿", 25], ["溫豆漿", 25],
+          ["冷奶茶", 25], ["溫奶茶", 25], ["冷紅茶", 20], ["溫紅茶", 20]
+        ]}
+      ]
+    };
+
+    const $ = (id) => document.getElementById(id);
+    const money = (value) => `${Number(value || 0).toLocaleString("zh-TW")} 元`;
+    const state = {
+      client: null,
+      menuType: "weekday",
+      orderCode: new URLSearchParams(location.search).get("order"),
+      order: null,
+      people: [],
+      draft: {}
+    };
+
+    function showToast(message) {
+      $("toast").textContent = message;
+      $("toast").classList.add("show");
+      window.clearTimeout(showToast.timer);
+      showToast.timer = window.setTimeout(() => $("toast").classList.remove("show"), 2400);
+    }
+
+    function setBusy(button, busy) {
+      button.disabled = busy;
+      button.dataset.oldText ||= button.textContent;
+      button.textContent = busy ? "處理中..." : button.dataset.oldText;
+    }
+
+    function today() {
+      const now = new Date();
+      now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+      return now.toISOString().slice(0, 10);
+    }
+
+    function saveConfig() {
+      localStorage.setItem("shoufeng-supabase-config", JSON.stringify({
+        url: $("supabaseUrl").value.trim(),
+        key: $("supabaseAnonKey").value.trim()
+      }));
+      connect();
+    }
+
+    function loadConfig() {
+      $("pickupDate").value = today();
+      const saved = JSON.parse(localStorage.getItem("shoufeng-supabase-config") || "{}");
+      $("supabaseUrl").value = saved.url || "";
+      $("supabaseAnonKey").value = saved.key || "";
+      connect(false);
+    }
+
+    function connect(showMessage = true) {
+      const url = $("supabaseUrl").value.trim();
+      const key = $("supabaseAnonKey").value.trim();
+      if (!url || !key || !window.supabase) {
+        $("connectionPill").textContent = "尚未連線";
+        state.client = null;
+        return;
+      }
+      state.client = window.supabase.createClient(url, key);
+      $("connectionPill").textContent = "已連線 Supabase";
+      if (showMessage) showToast("已儲存 Supabase 連線");
+      if (state.orderCode) loadOrder();
+    }
+
+    function shareUrl(code) {
+      const url = new URL(location.href);
+      url.searchParams.set("order", code);
+      return url.toString();
+    }
+
+    function currentItems() {
+      return menus[state.menuType].flatMap(group => group.items.map(([name, price]) => ({ name, price })));
+    }
+
+    function renderMenu() {
+      $("menu").innerHTML = menus[state.menuType].map(group => `
+        <div class="category">
+          <h3>${group.category}</h3>
+          <div class="items">
+            ${group.items.map(([name, price]) => `
+              <div class="item">
+                <div><b>${name}</b><span>${money(price)}</span></div>
+                <div class="stepper">
+                  <button type="button" data-action="dec" data-name="${name}">-</button>
+                  <output>${state.draft[name] || 0}</output>
+                  <button type="button" data-action="inc" data-name="${name}">+</button>
+                </div>
+              </div>
+            `).join("")}
+          </div>
+        </div>
+      `).join("");
+    }
+
+    function totals() {
+      const rows = new Map();
+      let qty = 0;
+      let amount = 0;
+      state.people.forEach(person => {
+        (person.items || []).forEach(item => {
+          const name = item.item_name;
+          const price = Number(item.unit_price);
+          const quantity = Number(item.quantity);
+          const row = rows.get(name) || { name, price, qty: 0, amount: 0 };
+          row.qty += quantity;
+          row.amount += price * quantity;
+          qty += quantity;
+          amount += price * quantity;
+          rows.set(name, row);
+        });
+      });
+      return { rows: [...rows.values()].sort((a, b) => b.qty - a.qty || a.name.localeCompare(b.name, "zh-Hant")), qty, amount };
+    }
+
+    function personTotal(person) {
+      return (person.items || []).reduce((sum, item) => sum + Number(item.unit_price) * Number(item.quantity), 0);
+    }
+
+    function renderOrder() {
+      const hasOrder = Boolean(state.order);
+      $("createPanel").classList.toggle("hidden", hasOrder);
+      $("sharePanel").classList.toggle("hidden", !hasOrder);
+      $("joinPanel").classList.toggle("hidden", !hasOrder);
+      $("peoplePanel").classList.toggle("hidden", !hasOrder);
+      $("summaryPanel").classList.toggle("hidden", !hasOrder);
+      $("codePill").textContent = hasOrder ? `訂單 ${state.order.order_code}` : "尚未建立訂單";
+
+      if (!hasOrder) {
+        renderMenu();
+        return;
+      }
+
+      state.menuType = state.order.menu_type;
+      $("shareLink").value = shareUrl(state.order.order_code);
+      $("submitPerson").disabled = state.order.locked;
+      $("lockOrder").disabled = state.order.locked;
+      renderMenu();
+      renderPeople();
+      renderSummary();
+    }
+
+    function renderPeople() {
+      if (!state.people.length) {
+        $("people").innerHTML = `<div class="empty">目前還沒有人送出餐點。</div>`;
+        return;
+      }
+      $("people").innerHTML = state.people.map(person => `
+        <article class="person">
+          <div class="person-head">
+            <span>${person.person_name}</span>
+            <span>${money(personTotal(person))}</span>
+          </div>
+          <div class="person-detail">
+            ${(person.items || []).map(item => `${item.item_name} x ${item.quantity}`).join("、")}
+            ${person.note && person.note !== "無" ? `<br>備註：${person.note}` : ""}
+          </div>
+        </article>
+      `).join("");
+    }
+
+    function renderSummary() {
+      const data = totals();
+      const minQty = Number(state.order?.min_qty || 10);
+      const minAmount = Number(state.order?.min_amount || 500);
+      const pass = data.qty >= minQty || data.amount >= minAmount;
+      $("countPill").textContent = `${state.people.length} 人點餐`;
+      $("thresholdPill").textContent = pass ? "已達門檻" : "尚未達門檻";
+      $("thresholdPill").style.color = pass ? "var(--brand-dark)" : "var(--danger)";
+
+      if (!data.rows.length) {
+        $("summary").innerHTML = `<div class="empty">尚無備餐資料。</div>`;
+        return;
+      }
+      $("summary").innerHTML = `
+        <table>
+          <thead><tr><th>品項</th><th>單價</th><th>數量</th><th>小計</th></tr></thead>
+          <tbody>
+            ${data.rows.map(row => `<tr><td>${row.name}</td><td>${money(row.price)}</td><td>${row.qty}</td><td>${money(row.amount)}</td></tr>`).join("")}
+          </tbody>
+        </table>
+        <div class="total"><span>共 ${data.qty} 份</span><span>${money(data.amount)}</span></div>
+      `;
+    }
+
+    async function createOrder() {
+      if (!state.client) return showToast("請先儲存 Supabase 連線");
+      if (!$("ownerName").value.trim() || !$("ownerPhone").value.trim()) return showToast("請填主訂餐人和電話");
+      const button = $("createOrder");
+      setBusy(button, true);
+      const { data, error } = await state.client.rpc("create_group_order", {
+        p_menu_type: state.menuType,
+        p_owner_name: $("ownerName").value.trim(),
+        p_owner_phone: $("ownerPhone").value.trim(),
+        p_pickup_date: $("pickupDate").value,
+        p_pickup_time: $("pickupTime").value,
+        p_delivery_type: $("deliveryType").value,
+        p_order_note: $("orderNote").value.trim(),
+        p_min_qty: Number($("minQty").value || 10),
+        p_min_amount: Number($("minAmount").value || 500)
+      });
+      setBusy(button, false);
+      if (error) return showToast(error.message);
+      state.orderCode = data;
+      history.replaceState(null, "", shareUrl(data));
+      await loadOrder();
+      showToast("訂餐連結已建立");
+    }
+
+    async function loadOrder() {
+      if (!state.client) return;
+      const code = state.orderCode || new URLSearchParams(location.search).get("order");
+      if (!code) return renderOrder();
+      const { data, error } = await state.client.rpc("get_group_order", { p_order_code: code });
+      if (error) return showToast(error.message);
+      if (!data || !data.order) return showToast("找不到這張訂單");
+      state.order = data.order;
+      state.people = data.people || [];
+      state.orderCode = data.order.order_code;
+      renderOrder();
+    }
+
+    async function submitPerson() {
+      if (!state.client || !state.order) return showToast("尚未載入訂單");
+      if (state.order.locked) return showToast("訂單已截止鎖定");
+      const name = $("personName").value.trim();
+      if (!name) return showToast("請填點餐人姓名");
+      const priceMap = new Map(currentItems().map(item => [item.name, item.price]));
+      const items = Object.entries(state.draft)
+        .filter(([, quantity]) => quantity > 0)
+        .map(([item_name, quantity]) => ({ item_name, unit_price: priceMap.get(item_name), quantity }));
+      if (!items.length) return showToast("請至少選一項餐點");
+      const button = $("submitPerson");
+      setBusy(button, true);
+      const { error } = await state.client.rpc("add_order_person", {
+        p_order_code: state.order.order_code,
+        p_person_name: name,
+        p_note: $("presetNote").value,
+        p_items: items
+      });
+      setBusy(button, false);
+      if (error) return showToast(error.message);
+      state.draft = {};
+      $("personName").value = "";
+      $("presetNote").value = "無";
+      await loadOrder();
+      showToast("餐點已送出");
+    }
+
+    async function lockOrder() {
+      if (!state.client || !state.order) return;
+      const phone = prompt("請輸入主訂餐人電話以鎖單");
+      if (!phone) return;
+      const button = $("lockOrder");
+      setBusy(button, true);
+      const { error } = await state.client.rpc("lock_group_order", {
+        p_order_code: state.order.order_code,
+        p_owner_phone: phone.trim()
+      });
+      setBusy(button, false);
+      if (error) return showToast(error.message);
+      await loadOrder();
+      showToast("訂單已截止鎖定");
+    }
+
+    function summaryText() {
+      const data = totals();
+      return [
+        "壽豐早點團體訂餐總表",
+        `訂單代碼：${state.order.order_code}`,
+        `菜單：${state.order.menu_type === "weekday" ? "平日" : "假日"}`,
+        `取餐：${state.order.pickup_date} ${state.order.pickup_time}`,
+        `主訂餐人：${state.order.owner_name} ${state.order.owner_phone}`,
+        `方式：${state.order.delivery_type}`,
+        "",
+        "備餐總表：",
+        ...data.rows.map(row => `${row.name} x ${row.qty}，小計 ${money(row.amount)}`),
+        "",
+        `共 ${data.qty} 份，總金額 ${money(data.amount)}`,
+        "",
+        "個人明細：",
+        ...state.people.map(person => `${person.person_name}：${person.items.map(item => `${item.item_name}x${item.quantity}`).join("、")}，${money(personTotal(person))}${person.note !== "無" ? `，備註：${person.note}` : ""}`)
+      ].join("\n");
+    }
+
+    document.addEventListener("click", (event) => {
+      const stepButton = event.target.closest("[data-action]");
+      if (stepButton) {
+        const name = stepButton.dataset.name;
+        const next = (state.draft[name] || 0) + (stepButton.dataset.action === "inc" ? 1 : -1);
+        if (next <= 0) delete state.draft[name];
+        else state.draft[name] = next;
+        renderMenu();
+      }
+
+      const menuButton = event.target.closest("[data-menu]");
+      if (menuButton) {
+        state.menuType = menuButton.dataset.menu;
+        state.draft = {};
+        document.querySelectorAll("[data-menu]").forEach(button => {
+          button.classList.toggle("active", button.dataset.menu === state.menuType);
+        });
+        renderMenu();
+      }
+    });
+
+    $("saveConfig").addEventListener("click", saveConfig);
+    $("clearConfig").addEventListener("click", () => {
+      localStorage.removeItem("shoufeng-supabase-config");
+      $("supabaseUrl").value = "";
+      $("supabaseAnonKey").value = "";
+      connect();
+      showToast("已清除 Supabase 連線");
+    });
+    $("createOrder").addEventListener("click", createOrder);
+    $("refreshOrder").addEventListener("click", loadOrder);
+    $("submitPerson").addEventListener("click", submitPerson);
+    $("resetDraft").addEventListener("click", () => {
+      state.draft = {};
+      $("personName").value = "";
+      $("presetNote").value = "無";
+      renderMenu();
+    });
+    $("copyLink").addEventListener("click", async () => {
+      await navigator.clipboard.writeText($("shareLink").value);
+      showToast("已複製連結");
+    });
+    $("copySummary").addEventListener("click", async () => {
+      if (!state.order) return;
+      await navigator.clipboard.writeText(summaryText());
+      showToast("已複製總表");
+    });
+    $("lockOrder").addEventListener("click", lockOrder);
+
+    loadConfig();
+    renderOrder();
+  </script>
+</body>
+</html>
