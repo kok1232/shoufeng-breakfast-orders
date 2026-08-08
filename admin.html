@@ -262,6 +262,20 @@
     .primary { color: #fff; background: var(--brand); }
     .secondary { border: 1px solid var(--line); color: var(--ink); background: #fff; }
     .danger { color: #fff; background: var(--danger); }
+    .danger-sm {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 26px;
+      padding: 0 8px;
+      border-radius: 6px;
+      color: #fff;
+      background: var(--danger);
+      font-size: 12px;
+      font-weight: 900;
+      opacity: .85;
+    }
+    .danger-sm:hover { opacity: 1; }
     button:disabled {
       opacity: .58;
       cursor: not-allowed;
@@ -731,14 +745,29 @@
         <article class="person">
           <div class="person-head">
             <span>${person.person_name}</span>
-            <span>${money(personTotal(person))}</span>
+            <div style="display:flex;align-items:center;gap:10px">
+              <span>${money(personTotal(person))}</span>
+              <button class="danger-sm" type="button" data-delete="${person.id}">刪除</button>
+            </div>
           </div>
           <div class="person-detail">
             ${(person.items || []).map(item => `${item.item_name} x ${item.quantity}`).join("、")}
-            ${person.note && person.note !== "無" ? `<br>備註：${person.note}` : ""}
+            ${person.note && person.note !== "無" && person.note ? `<br>備註：${person.note}` : ""}
           </div>
         </article>
       `).join("");
+    }
+
+    async function deletePerson(id) {
+      if (!state.client) return;
+      if (!confirm("確定要刪除這筆餐點？刪除後客人可以重新填單。")) return;
+      const { error } = await state.client.rpc("delete_order_person", {
+        p_person_id: id,
+        p_order_code: state.order.order_code
+      });
+      if (error) return showToast("刪除失敗：" + error.message);
+      await loadOrder();
+      showToast("已刪除，客人可重新填單");
     }
 
     function renderSummary() {
@@ -845,6 +874,10 @@
         document.querySelectorAll("[data-menu]").forEach(button => {
           button.classList.toggle("active", button.dataset.menu === state.menuType);
         });
+      }
+      const deleteButton = event.target.closest("[data-delete]");
+      if (deleteButton) {
+        deletePerson(deleteButton.dataset.delete);
       }
     });
 

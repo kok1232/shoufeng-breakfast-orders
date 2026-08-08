@@ -246,12 +246,29 @@
       background: var(--soft);
       font-weight: 900;
     }
-    .stepper output {
+    .stepper output,
+    .stepper input[type="number"] {
       display: grid;
       place-items: center;
+      width: 34px;
       height: 32px;
       background: #fff;
       font-weight: 900;
+      font-size: 14px;
+      border: none;
+      border-left: 1px solid var(--line);
+      border-right: 1px solid var(--line);
+      text-align: center;
+      -moz-appearance: textfield;
+      color: var(--ink);
+    }
+    .stepper input[type="number"]::-webkit-inner-spin-button,
+    .stepper input[type="number"]::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+    }
+    .stepper input[type="number"]:focus {
+      outline: none;
+      background: #f0faf5;
     }
     .person {
       border: 1px solid var(--line);
@@ -332,7 +349,7 @@
       </div>
       <h1>跟著大家一起點</h1>
       <p class="tagline">主訂餐人已經建立好這張團體訂單，填上你的名字和想吃的餐點，送出後就會集中到同一張單。</p>
-      <div class="rule"><strong>固定備註</strong><br />只能選固定備註，避免現場出餐被太多客製要求打亂。</div>
+      <div class="rule"><strong>備註</strong><br />可以在備註欄自由填寫需求，例如不要醬、分開裝等。</div>
       <div class="rule"><strong>截止鎖單</strong><br />主訂餐人鎖單後，就不能再新增餐點了，請盡早送出。</div>
     </aside>
 
@@ -372,14 +389,8 @@
                 <label>點餐人姓名
                   <input id="personName" placeholder="例如：小林" />
                 </label>
-                <label>固定備註
-                  <select id="presetNote">
-                    <option>無</option>
-                    <option>不要醬</option>
-                    <option>分開裝</option>
-                    <option>飲料少冰</option>
-                    <option>餐點分袋</option>
-                  </select>
+                <label>備註（選填）
+                  <input id="presetNote" placeholder="例如：不要醬、分開裝" />
                 </label>
               </div>
               <div class="menu" id="menu"></div>
@@ -480,7 +491,10 @@
                 <div><b>${name}</b><span>${money(price)}</span></div>
                 <div class="stepper">
                   <button type="button" data-action="dec" data-name="${name}">-</button>
-                  <output>${state.draft[name] || 0}</output>
+                  <input type="number" min="0" max="99" inputmode="numeric"
+                    value="${state.draft[name] || 0}"
+                    data-qty="${name}"
+                    style="width:34px" />
                   <button type="button" data-action="inc" data-name="${name}">+</button>
                 </div>
               </div>
@@ -576,7 +590,7 @@
       if (error) return showToast(error.message);
       state.draft = {};
       $("personName").value = "";
-      $("presetNote").value = "無";
+      $("presetNote").value = "";
       await loadOrder();
       showToast("餐點已送出");
     }
@@ -585,10 +599,25 @@
       const stepButton = event.target.closest("[data-action]");
       if (stepButton) {
         const name = stepButton.dataset.name;
-        const next = (state.draft[name] || 0) + (stepButton.dataset.action === "inc" ? 1 : -1);
-        if (next <= 0) delete state.draft[name];
-        else state.draft[name] = next;
-        renderMenu();
+        const current = Number(state.draft[name] || 0);
+        const next = current + (stepButton.dataset.action === "inc" ? 1 : -1);
+        const val = Math.max(0, next);
+        if (val <= 0) delete state.draft[name];
+        else state.draft[name] = val;
+        // 直接更新對應 input 的值，不重新 render 整個 menu
+        const input = document.querySelector(`[data-qty="${CSS.escape(name)}"]`);
+        if (input) input.value = val;
+      }
+    });
+
+    document.addEventListener("input", (event) => {
+      const qtyInput = event.target.closest("[data-qty]");
+      if (qtyInput) {
+        const name = qtyInput.dataset.qty;
+        const val = Math.max(0, parseInt(qtyInput.value, 10) || 0);
+        qtyInput.value = val;
+        if (val <= 0) delete state.draft[name];
+        else state.draft[name] = val;
       }
     });
 
@@ -597,7 +626,7 @@
     $("resetDraft").addEventListener("click", () => {
       state.draft = {};
       $("personName").value = "";
-      $("presetNote").value = "無";
+      $("presetNote").value = "";
       renderMenu();
     });
 
