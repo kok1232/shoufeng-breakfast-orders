@@ -400,6 +400,43 @@
       line-height: 1.7;
       background: rgba(255,255,255,.72);
     }
+    .history-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      margin-top: 8px;
+      cursor: pointer;
+      transition: border-color .15s;
+    }
+    .history-item:hover { border-color: var(--brand); }
+    .history-item:first-child { margin-top: 0; }
+    .history-meta {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+    .history-code {
+      font-weight: 900;
+      color: var(--ink);
+      font-size: 15px;
+    }
+    .history-load {
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      height: 30px;
+      padding: 0 10px;
+      border-radius: 6px;
+      color: #fff;
+      background: var(--brand);
+      font-size: 13px;
+      font-weight: 900;
+    }
     .toast {
       position: fixed;
       left: 50%;
@@ -533,6 +570,22 @@
                 <textarea id="orderNote" maxlength="80" placeholder="最多 80 字"></textarea>
               </label>
               <button class="primary" type="button" id="createOrder">建立訂餐連結</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel" id="historyPanel">
+          <div class="head">
+            <h2>查詢歷史訂單</h2>
+            <p>輸入主訂餐人電話，載回之前建立的訂單。</p>
+          </div>
+          <div class="body">
+            <div class="form">
+              <div style="display:flex;gap:8px">
+                <input id="historyPhone" placeholder="主訂餐人電話" style="flex:1" />
+                <button class="secondary" type="button" id="searchHistory">查詢</button>
+              </div>
+              <div id="historyList"></div>
             </div>
           </div>
         </section>
@@ -831,6 +884,46 @@
       renderOrder();
     }
 
+    async function searchHistory() {
+      const phone = $("historyPhone").value.trim();
+      if (!phone) return showToast("請輸入電話");
+      if (!state.client) return showToast("請先儲存 Supabase 連線");
+      const btn = $("searchHistory");
+      setBusy(btn, true);
+      const { data, error } = await state.client.rpc("get_orders_by_phone", { p_owner_phone: phone });
+      setBusy(btn, false);
+      if (error) return showToast("查詢失敗：" + error.message);
+      const list = $("historyList");
+      if (!data || !data.length) {
+        list.innerHTML = `<div class="empty">找不到這支電話的訂單記錄。</div>`;
+        return;
+      }
+      list.innerHTML = data.map(o => `
+        <div class="history-item" data-load="${o.order_code}">
+          <div>
+            <div class="history-code">${o.order_code}</div>
+            <div class="history-meta">
+              ${o.pickup_date} ${o.pickup_time}　${o.menu_type === "weekday" ? "平日" : "假日"}　${o.delivery_type}
+              ${o.locked ? "　🔒 已鎖單" : ""}
+            </div>
+          </div>
+          <span class="history-load">載入</span>
+        </div>
+      `).join("");
+    }
+
+    async function loadHistoryOrder(code) {
+      if (!state.client) return;
+      const { data, error } = await state.client.rpc("get_group_order", { p_order_code: code });
+      if (error) return showToast(error.message);
+      if (!data || !data.order) return showToast("找不到這張訂單");
+      state.order = data.order;
+      state.people = data.people || [];
+      state.orderCode = data.order.order_code;
+      renderOrder();
+      showToast(`已載入訂單 ${code}`);
+    }
+
     async function lockOrder() {
       if (!state.client || !state.order) return;
       const phone = prompt("請輸入主訂餐人電話以鎖單");
@@ -895,6 +988,14 @@
     });
     $("createOrder").addEventListener("click", createOrder);
     $("refreshOrder").addEventListener("click", loadOrder);
+    $("searchHistory").addEventListener("click", searchHistory);
+    $("historyPhone").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") searchHistory();
+    });
+    $("historyList").addEventListener("click", (e) => {
+      const item = e.target.closest("[data-load]");
+      if (item) loadHistoryOrder(item.dataset.load);
+    });
     $("copyLink").addEventListener("click", async () => {
       await navigator.clipboard.writeText($("shareLink").value);
       showToast("已複製連結");

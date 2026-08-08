@@ -292,6 +292,19 @@
       font-size: 13px;
       line-height: 1.65;
     }
+    .delete-btn {
+      display: inline-flex;
+      align-items: center;
+      height: 26px;
+      padding: 0 8px;
+      border-radius: 6px;
+      color: #fff;
+      background: var(--danger);
+      font-size: 12px;
+      font-weight: 900;
+      opacity: .8;
+    }
+    .delete-btn:hover { opacity: 1; }
     .empty {
       padding: 22px;
       border: 1px dashed var(--line);
@@ -542,14 +555,29 @@
         <article class="person">
           <div class="person-head">
             <span>${person.person_name}</span>
-            <span>${money(personTotal(person))}</span>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span>${money(personTotal(person))}</span>
+              <button class="delete-btn" type="button" data-delete="${person.id}">刪除</button>
+            </div>
           </div>
           <div class="person-detail">
             ${(person.items || []).map(item => `${item.item_name} x ${item.quantity}`).join("、")}
-            ${person.note && person.note !== "無" ? `<br>備註：${person.note}` : ""}
+            ${person.note && person.note !== "無" && person.note ? `<br>備註：${person.note}` : ""}
           </div>
         </article>
       `).join("");
+    }
+
+    async function deletePerson(id) {
+      if (!state.order) return;
+      if (!confirm("確定要刪除這筆餐點？刪除後可以重新填單。")) return;
+      const { error } = await state.client.rpc("delete_order_person", {
+        p_person_id: id,
+        p_order_code: state.order.order_code
+      });
+      if (error) return showToast("刪除失敗：" + error.message);
+      await loadOrder();
+      showToast("已刪除，可以重新填單");
     }
 
     async function loadOrder() {
@@ -604,9 +632,12 @@
         const val = Math.max(0, next);
         if (val <= 0) delete state.draft[name];
         else state.draft[name] = val;
-        // 直接更新對應 input 的值，不重新 render 整個 menu
         const input = document.querySelector(`[data-qty="${CSS.escape(name)}"]`);
         if (input) input.value = val;
+      }
+      const deleteButton = event.target.closest("[data-delete]");
+      if (deleteButton) {
+        deletePerson(deleteButton.dataset.delete);
       }
     });
 
